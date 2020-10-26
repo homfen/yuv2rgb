@@ -310,6 +310,71 @@ void yuv420_rgb24_std(
 	}
 }
 
+void yuv420_rgba_std(
+	uint32_t width, uint32_t height, 
+	const uint8_t *Y, const uint8_t *U, const uint8_t *V, uint32_t Y_stride, uint32_t UV_stride, 
+	uint8_t *RGB, uint32_t RGB_stride, 
+	YCbCrType yuv_type)
+{
+	const YUV2RGBParam *const param = &(YUV2RGB[yuv_type]);
+	uint32_t x, y;
+	for(y=0; y<(height-1); y+=2)
+	{
+		const uint8_t *y_ptr1=Y+y*Y_stride,
+			*y_ptr2=Y+(y+1)*Y_stride,
+			*u_ptr=U+(y/2)*UV_stride,
+			*v_ptr=V+(y/2)*UV_stride;
+		
+		uint8_t *rgb_ptr1=RGB+y*RGB_stride,
+			*rgb_ptr2=RGB+(y+1)*RGB_stride;
+		
+		for(x=0; x<(width-1); x+=2)
+		{
+			int8_t u_tmp, v_tmp;
+			u_tmp = u_ptr[0]-128;
+			v_tmp = v_ptr[0]-128;
+			
+			//compute Cb Cr color offsets, common to four pixels
+			int16_t b_cb_offset, r_cr_offset, g_cbcr_offset;
+			b_cb_offset = (param->cb_factor*u_tmp)>>6;
+			r_cr_offset = (param->cr_factor*v_tmp)>>6;
+			g_cbcr_offset = (param->g_cb_factor*u_tmp + param->g_cr_factor*v_tmp)>>7;
+			
+			int16_t y_tmp;
+			y_tmp = (param->y_factor*(y_ptr1[0]-param->y_offset))>>7;
+			rgb_ptr1[0] = clamp(y_tmp + r_cr_offset);
+			rgb_ptr1[1] = clamp(y_tmp - g_cbcr_offset);
+			rgb_ptr1[2] = clamp(y_tmp + b_cb_offset);
+			rgb_ptr1[3] = 255;
+			
+			y_tmp = (param->y_factor*(y_ptr1[1]-param->y_offset))>>7;
+			rgb_ptr1[4] = clamp(y_tmp + r_cr_offset);
+			rgb_ptr1[5] = clamp(y_tmp - g_cbcr_offset);
+			rgb_ptr1[6] = clamp(y_tmp + b_cb_offset);
+			rgb_ptr1[7] = 255;
+			
+			y_tmp = (param->y_factor*(y_ptr2[0]-param->y_offset))>>7;
+			rgb_ptr2[0] = clamp(y_tmp + r_cr_offset);
+			rgb_ptr2[1] = clamp(y_tmp - g_cbcr_offset);
+			rgb_ptr2[2] = clamp(y_tmp + b_cb_offset);
+			rgb_ptr2[3] = 255;
+			
+			y_tmp = (param->y_factor*(y_ptr2[1]-param->y_offset))>>7;
+			rgb_ptr2[4] = clamp(y_tmp + r_cr_offset);
+			rgb_ptr2[5] = clamp(y_tmp - g_cbcr_offset);
+			rgb_ptr2[6] = clamp(y_tmp + b_cb_offset);
+			rgb_ptr2[7] = 255;
+			
+			rgb_ptr1 += 8;
+			rgb_ptr2 += 8;
+			y_ptr1 += 2;
+			y_ptr2 += 2;
+			u_ptr += 1;
+			v_ptr += 1;
+		}
+	}
+}
+
 void nv12_rgb24_std(
 	uint32_t width, uint32_t height, 
 	const uint8_t *Y, const uint8_t *UV, uint32_t Y_stride, uint32_t UV_stride, 
